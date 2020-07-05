@@ -75,5 +75,6 @@ interviews_df <- episodes_df %>%
 
 #export transcript tibble
 saveRDS(interviews_df, file = "interviews_raw.rds")
+write_csv(interviews_df, path = "interviews_raw.csv")
   
   
