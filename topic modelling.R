@@ -70,7 +70,7 @@ k_result %>%
   labs(x = "K (number of topics)",
        y = NULL,
        title = "Model diagnostics by number of topics",
-       subtitle = "These diagnostics indicate that a good number of topics would be around 60")
+       subtitle = "Between 10 to 15 seems like a reasonable number of topics")
 
 
 k_result %>%
@@ -85,7 +85,7 @@ k_result %>%
        title = "Comparing exclusivity and semantic coherence",
        subtitle = "Models with fewer topics have higher semantic coherence for more topics, but lower exclusivity")
 
-
+#select K = 14 topics
 topic_model <- k_result %>% 
   filter(K == 14) %>% 
   pull(topic_model) %>% 
@@ -122,7 +122,6 @@ gamma_terms <- td_gamma %>%
          topic = reorder(topic, gamma))
 
 gamma_terms %>%
-  top_n(20, gamma) %>%
   ggplot(aes(topic, gamma, label = terms, fill = topic)) +
   geom_col(show.legend = FALSE) +
   geom_text(hjust = 0, nudge_y = 0.0005, size = 3,
@@ -135,7 +134,7 @@ gamma_terms %>%
                                   family="IBMPlexSans-Bold"),
         plot.subtitle = element_text(size = 13)) +
   labs(x = NULL, y = expression(gamma),
-       title = "Top 20 topics by prevalence in the Hacker News corpus",
+       title = "Topics by prevalence in the NDR Info Coronavirus-Update corpus",
        subtitle = "With the top words that contribute to each topic")
 
 library(knitr)
