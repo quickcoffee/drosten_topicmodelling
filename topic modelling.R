@@ -154,6 +154,7 @@ episodes_topic_tbl <- episodes_topic_tbl %>%
               top_n(n = 1, wt = gamma) %>%
               select(episode_no, topic, top_gamma_transcript = transcript))
 
+library(scales)
 episodes_topic_tbl %>% 
   ungroup() %>% 
   group_by(episode_no, speaker) %>% 
@@ -163,19 +164,36 @@ episodes_topic_tbl %>%
                                                                               "Christian Drosten",
                                                                               "Dirk Brockmann")))+
   geom_col()+
-  labs(fill = "Speaker")
+  scale_y_continuous(label=comma)+
+  theme(legend.position="top",
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  labs(fill = "Speaker",
+       x = "Episode No",
+       y = "Length (Characters)")
 
+#helper fun from https://stackoverflow.com/questions/52919899/ggplot2-display-every-nth-value-on-discrete-axis for plotting only every other value:
+every_nth = function(n) {
+  return(function(x) {x[c(TRUE, rep(FALSE, n - 1))]})
+}
 p_topics <- episodes_topic_tbl %>% 
   summarise(gamma_sum = sum(gamma_weighted), top_gamma_transcript = max(top_gamma_transcript)) %>% 
   left_join(top_terms, by = "topic") %>%
   left_join(episodes_df, by = c("episode_no")) %>% 
-  ggplot(aes(x=as_factor(as.numeric(episode_no)), y=gamma_sum, fill = as.factor(topic), group = topic,
-             label=terms))+
+  ggplot(aes(x=as_factor(as.numeric(episode_no)), y=gamma_sum, fill = as_factor(topic), group = topic,
+             text = paste("Episode No: ", as_factor(as.numeric(episode_no)),
+                          "<br>Gamma: ", round(gamma_sum, 3),
+                          "<br>Topic: ", as_factor(topic),
+                          "<br>Terms: ", terms
+             )))+
   geom_area()+
-  facet_wrap(~as.factor(topic))
+  facet_wrap(~as.factor(topic))+
+  theme(legend.position='none')+
+  scale_x_discrete(breaks = every_nth(n = 5))+
+  labs(x="Episode No",
+       y="Gamma")
 
 p_topics
 
 library(plotly)
-ggplotly(p_topics)
+ggplotly(p_topics, tooltip = "text")
 
