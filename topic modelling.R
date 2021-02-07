@@ -10,7 +10,7 @@ stop_german <- tibble(word = c(stopwords::stopwords("de"),
   bind_rows(tibble(word = c("dass", "schon", "mal", "deswegen", "eigentlich", "ganz", "ja", "genau", "gar", "jeweils", "zumindest", "klar", "finde", "nämlich", "sowieso", "sagen", "eher", "bisschen", "glaube", "sodass"))) %>% 
   distinct()
 
-interviews_df <- interviews_df %>% 
+interviews_df <- corona_update_transcripts %>% 
   group_by(episode_no, speaker) %>%
   mutate(count = TRUE,
          count = cumsum(count),
@@ -19,7 +19,7 @@ interviews_df <- interviews_df %>%
   select(-count)
 
 tidy_interviews <-  interviews_df %>% 
-  unnest_tokens(output = word, input = transcript, token = c("words")) %>% 
+  unnest_tokens(output = word, input = text, token = c("words")) %>% 
   anti_join(stop_german) %>%
   add_count(word) %>%
   filter(n > 2) %>%
@@ -39,7 +39,7 @@ library(furrr)
 no_cores <- availableCores() - 1
 plan(multicore, workers = no_cores)
 
-many_models <- tibble(K = seq(6, 20, by=1)) %>%
+many_models <- tibble(K = seq(8, 22, by=1)) %>%
   mutate(topic_model = future_map(K, ~stm(interviews_sparse, K = .,
                                           verbose = F)))
 
@@ -70,12 +70,12 @@ k_result %>%
   labs(x = "K (number of topics)",
        y = NULL,
        title = "Model diagnostics by number of topics",
-       subtitle = "Between 10 to 15 seems like a reasonable number of topics")
+       subtitle = "Between 12 to 18 seems like a reasonable number of topics")
 
 
 k_result %>%
   select(K, exclusivity, semantic_coherence) %>%
-  filter(K %in% c(10, 13, 14)) %>%
+  filter(K %in% c(13, 16, 18)) %>%
   unnest() %>%
   mutate(K = as.factor(K)) %>%
   ggplot(aes(semantic_coherence, exclusivity, color = K)) +
@@ -85,9 +85,9 @@ k_result %>%
        title = "Comparing exclusivity and semantic coherence",
        subtitle = "Models with fewer topics have higher semantic coherence for more topics, but lower exclusivity")
 
-#select K = 14 topics
+#select K = 16 topics
 topic_model <- k_result %>% 
-  filter(K == 14) %>% 
+  filter(K == 16) %>% 
   pull(topic_model) %>% 
   .[[1]]
 
@@ -146,13 +146,13 @@ gamma_terms %>%
 
 episodes_topic_tbl <- td_gamma %>%
   left_join(interviews_df, by = c("document" = "id")) %>% 
-  mutate(transcript_length = nchar(transcript)) %>% 
+  mutate(transcript_length = nchar(text)) %>% 
   group_by(episode_no, topic) %>% 
   mutate(gamma_weighted = gamma * (transcript_length/sum(transcript_length)))
 episodes_topic_tbl <- episodes_topic_tbl %>%
   left_join(episodes_topic_tbl %>%
               top_n(n = 1, wt = gamma) %>%
-              select(episode_no, topic, top_gamma_transcript = transcript))
+              select(episode_no, topic, top_gamma_transcript = text))
 
 library(scales)
 episodes_topic_tbl %>% 
@@ -178,7 +178,7 @@ every_nth = function(n) {
 p_topics <- episodes_topic_tbl %>% 
   summarise(gamma_sum = sum(gamma_weighted), top_gamma_transcript = max(top_gamma_transcript)) %>% 
   left_join(top_terms, by = "topic") %>%
-  left_join(episodes_df, by = c("episode_no")) %>% 
+  left_join(corona_update_transcripts, by = c("episode_no")) %>% 
   ggplot(aes(x=as_factor(as.numeric(episode_no)), y=gamma_sum, fill = as_factor(topic), group = topic,
              text = paste("Episode No: ", as_factor(as.numeric(episode_no)),
                           "<br>Gamma: ", round(gamma_sum, 3),
